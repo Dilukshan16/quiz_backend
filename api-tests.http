@@ -1,0 +1,266 @@
+### ============================================================
+### Kids Quiz Backend — API Test File
+### Use with VS Code "REST Client" extension, or copy into Postman
+### Run requests in ORDER — each step uses IDs from the previous
+### ============================================================
+
+@base = http://localhost:3000/api
+
+### ─── VARIABLES (fill in after each step) ───────────────────
+@quiz_id = PASTE_QUIZ_ID_HERE
+@attempt_id = PASTE_ATTEMPT_ID_HERE
+@question_id = PASTE_QUESTION_ID_HERE
+@option_id = PASTE_OPTION_ID_HERE
+@user_id = PASTE_USER_ID_HERE
+
+
+### ════════════════════════════════════════════════════════════
+### 0. HEALTH CHECK
+### ════════════════════════════════════════════════════════════
+
+### Check server is alive
+GET http://localhost:3000
+
+
+### ════════════════════════════════════════════════════════════
+### 1. USERS — Register a child
+### ════════════════════════════════════════════════════════════
+
+### Register a new child user → copy "id" into @user_id above
+POST {{base}}/users
+Content-Type: application/json
+
+{
+  "name": "Tommy",
+  "age": 8
+}
+
+###
+
+### Get all users
+GET {{base}}/users
+
+###
+
+### Get one user with their quiz history
+GET {{base}}/users/{{user_id}}
+
+
+### ════════════════════════════════════════════════════════════
+### 2. QUIZZES — Create & fetch
+### ════════════════════════════════════════════════════════════
+
+### Get all quizzes (use the seeded one, or create your own below)
+GET {{base}}/quizzes
+
+###
+
+### Get quiz details (set @quiz_id first)
+GET {{base}}/quizzes/{{quiz_id}}
+
+###
+
+### Create a brand new quiz → copy the returned "id" into @quiz_id
+POST {{base}}/quizzes
+Content-Type: application/json
+
+{
+  "title": "Space Explorer Quiz",
+  "description": "How much do you know about outer space?",
+  "category": "science",
+  "difficulty": "medium",
+  "questions": [
+    {
+      "question_text": "What is the closest star to Earth?",
+      "explanation": "The Sun is our nearest star — it gives us light and warmth every day!",
+      "options": [
+        { "option_text": "The Moon",  "is_correct": false },
+        { "option_text": "The Sun",   "is_correct": true  },
+        { "option_text": "Mars",      "is_correct": false },
+        { "option_text": "Jupiter",   "is_correct": false }
+      ]
+    },
+    {
+      "question_text": "How many planets are in our Solar System?",
+      "explanation": "There are 8 planets: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune.",
+      "options": [
+        { "option_text": "7",  "is_correct": false },
+        { "option_text": "8",  "is_correct": true  },
+        { "option_text": "9",  "is_correct": false },
+        { "option_text": "10", "is_correct": false }
+      ]
+    },
+    {
+      "question_text": "What do we call a shooting star?",
+      "explanation": "Shooting stars are actually meteors — rocks that burn up entering Earth's atmosphere.",
+      "options": [
+        { "option_text": "Comet",   "is_correct": false },
+        { "option_text": "Meteor",  "is_correct": true  },
+        { "option_text": "Asteroid","is_correct": false },
+        { "option_text": "Planet",  "is_correct": false }
+      ]
+    }
+  ]
+}
+
+###
+
+### Delete a quiz (soft delete)
+DELETE {{base}}/quizzes/{{quiz_id}}
+
+
+### ════════════════════════════════════════════════════════════
+### 3. QUIZ SESSION — The full quiz flow
+### ════════════════════════════════════════════════════════════
+
+### STEP 1: Start the quiz → copy "attempt_id" into @attempt_id
+###         Also copy first question "id" into @question_id
+###         Also copy one option "id" into @option_id
+POST {{base}}/sessions/start
+Content-Type: application/json
+
+{
+  "quiz_id": "{{quiz_id}}",
+  "user_id": "{{user_id}}"
+}
+
+###
+
+### STEP 2: Get current session state
+GET {{base}}/sessions/{{attempt_id}}
+
+###
+
+### STEP 3: Submit an answer for the current question
+###         is_correct / feedback / updated score returned instantly
+POST {{base}}/sessions/{{attempt_id}}/answer
+Content-Type: application/json
+
+{
+  "question_id": "{{question_id}}",
+  "selected_option_id": "{{option_id}}"
+}
+
+###
+
+### STEP 4: Move to next question (repeat STEP 3 + STEP 4 for each question)
+POST {{base}}/sessions/{{attempt_id}}/next
+
+###
+
+### STEP 5: Go back to previous question (optional)
+POST {{base}}/sessions/{{attempt_id}}/prev
+
+###
+
+### STEP 6: Get final results — score, stars, badge, answer review
+GET {{base}}/sessions/{{attempt_id}}/results
+
+
+### ════════════════════════════════════════════════════════════
+### 4. PROGRESS — For the frontend progress bar
+### ════════════════════════════════════════════════════════════
+
+### Get progress data (% complete, remaining questions, score)
+GET {{base}}/progress/{{attempt_id}}
+
+
+### ════════════════════════════════════════════════════════════
+### 5. ADMIN — Management & stats
+### ════════════════════════════════════════════════════════════
+
+### Overall system stats
+GET {{base}}/admin/stats
+
+###
+
+### All quizzes with full question/option data
+GET {{base}}/admin/quizzes
+
+###
+
+### All quiz attempts (filter by quiz or completion)
+GET {{base}}/admin/attempts
+
+###
+
+### Filter attempts: only completed ones
+GET {{base}}/admin/attempts?completed=true
+
+###
+
+### Filter attempts: by specific quiz
+GET {{base}}/admin/attempts?quiz_id={{quiz_id}}
+
+###
+
+### Edit a quiz (change title, difficulty, etc)
+PUT {{base}}/admin/quizzes/{{quiz_id}}
+Content-Type: application/json
+
+{
+  "title": "Updated Quiz Title",
+  "difficulty": "hard",
+  "is_active": true
+}
+
+###
+
+### Edit a question text or explanation
+PUT {{base}}/admin/questions/{{question_id}}
+Content-Type: application/json
+
+{
+  "question_text": "Updated question text here?",
+  "explanation": "Updated explanation here."
+}
+
+
+### ════════════════════════════════════════════════════════════
+### 6. VALIDATION TESTS — These should return 400 errors
+### ════════════════════════════════════════════════════════════
+
+### Missing quiz_id → should return 400
+POST {{base}}/sessions/start
+Content-Type: application/json
+
+{}
+
+###
+
+### Missing answer fields → should return 400
+POST {{base}}/sessions/{{attempt_id}}/answer
+Content-Type: application/json
+
+{
+  "question_id": "{{question_id}}"
+}
+
+###
+
+### Create quiz with no questions → should return 400
+POST {{base}}/quizzes
+Content-Type: application/json
+
+{
+  "title": "Empty Quiz"
+}
+
+###
+
+### Create quiz with question but no correct option → should return 400
+POST {{base}}/quizzes
+Content-Type: application/json
+
+{
+  "title": "Bad Quiz",
+  "questions": [
+    {
+      "question_text": "Which one?",
+      "options": [
+        { "option_text": "A", "is_correct": false },
+        { "option_text": "B", "is_correct": false }
+      ]
+    }
+  ]
+}
