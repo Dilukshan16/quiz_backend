@@ -67,33 +67,24 @@ const createQuiz = (req, res) => {
 
     const quizId = uuidv4();
 
-    const insertQuiz = db.prepare(`
-      INSERT INTO quizzes (id, title, description, category, difficulty, total_questions, image_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertQuestion = db.prepare(`
-      INSERT INTO questions (id, quiz_id, question_text, explanation, image_url, order_index)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertOption = db.prepare(`
-      INSERT INTO options (id, question_id, option_text, is_correct, order_index)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-
     const transaction = db.transaction(() => {
-      insertQuiz.run(quizId, title, description || null, category || null, difficulty || 'easy', questions.length, image_url || null);
+      db.prepare(
+        'INSERT INTO quizzes (id, title, description, category, difficulty, total_questions, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).run(quizId, title, description || null, category || null, difficulty || 'easy', questions.length, image_url || null);
 
       questions.forEach((q, qIndex) => {
         if (!q.question_text) throw new Error(`Question ${qIndex + 1} is missing question_text`);
         if (!q.options || q.options.length < 2) throw new Error(`Question ${qIndex + 1} needs at least 2 options`);
 
         const questionId = uuidv4();
-        insertQuestion.run(questionId, quizId, q.question_text, q.explanation || null, q.image_url || null, qIndex);
+        db.prepare(
+          'INSERT INTO questions (id, quiz_id, question_text, explanation, image_url, order_index) VALUES (?, ?, ?, ?, ?, ?)'
+        ).run(questionId, quizId, q.question_text, q.explanation || null, q.image_url || null, qIndex);
 
         q.options.forEach((opt, oIndex) => {
-          insertOption.run(uuidv4(), questionId, opt.option_text, opt.is_correct ? 1 : 0, oIndex);
+          db.prepare(
+            'INSERT INTO options (id, question_id, option_text, is_correct, order_index) VALUES (?, ?, ?, ?, ?)'
+          ).run(uuidv4(), questionId, opt.option_text, opt.is_correct ? 1 : 0, oIndex);
         });
       });
     });
